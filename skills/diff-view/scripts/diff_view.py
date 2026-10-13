@@ -15,7 +15,9 @@ Options:
 
 It prints the page's file:// address. The page draws each diff with @pierre/diffs (Apache-2.0),
 loaded from esm.sh at a pinned version: split or unified, wrapped lines, changed words marked,
-folded context that expands on click. Without network it shows a plain unified diff instead.
+folded context that expands on click. Markdown files are drawn as documents (markdown-it and
+visual-dom-diff, both MIT), with a Source switch for line diffs. Without network it shows a plain
+unified diff instead.
 The script itself needs only Python's standard library.
 """
 import argparse
@@ -29,8 +31,13 @@ import sys
 import tempfile
 import webbrowser
 
-# Pinned, so a page renders the same tomorrow. 1.5.1 was published on 2026-09-25.
+# Pinned, so a page renders the same tomorrow. @pierre/diffs 1.5.1 was published on 2026-09-25.
 RENDERER = "https://esm.sh/@pierre/diffs@1.5.1"
+# Markdown files can also be shown rendered: markdown-it draws each version and visual-dom-diff marks
+# what changed between the two drawings. Both load only when a page holds a Markdown file.
+MARKDOWN = "https://esm.sh/markdown-it@15.0.2"
+DOM_DIFF = "https://esm.sh/visual-dom-diff@0.7.3"
+MD_SUFFIXES = (".md", ".markdown")
 
 
 # ---------- collecting file pairs ----------
@@ -58,7 +65,8 @@ def read_file(path):
 
 def entry(name, old, new, before, after):
     (a, a_bin), (b, b_bin) = old, new
-    return {"name": name, "old": a, "new": b, "binary": a_bin or b_bin, "before": before, "after": after}
+    return {"name": name, "old": a, "new": b, "binary": a_bin or b_bin, "before": before, "after": after,
+            "md": name.lower().endswith(MD_SUFFIXES) and not (a_bin or b_bin)}
 
 
 def git(repo, *args):
@@ -272,6 +280,52 @@ html.offline .fallback { display: block; }
 .udiff .del { background: color-mix(in srgb, var(--del) 14%, transparent); }
 .udiff .hunk { color: var(--muted); background: var(--hover); margin: 4px 0; }
 .empty-page { color: var(--muted); margin-top: 24px; }
+
+.lbl { color: var(--muted); font-size: 12.5px; margin-left: 10px; }
+.md-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px 0 14px;
+  background: var(--surface); font: 500 13px var(--ui); }
+.md-head .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-head .grow { flex: 1; }
+.md-head .ico { color: var(--mod); display: inline-flex; }
+.md-head .ico.added { color: var(--add); } .md-head .ico.deleted { color: var(--del); }
+.md-head .cnt { font: 12.5px var(--mono); }
+.md-head .cnt.del { color: var(--del); } .md-head .cnt.add { color: var(--add); margin-left: 8px; }
+.md-note { margin: 0; padding: 10px 16px 14px; color: var(--muted); font-size: 13px; }
+.md-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.md-grid.unified .md-row { grid-template-columns: minmax(0, 1fr); }
+.md-cell { min-width: 0; padding: 7px 18px; overflow-wrap: anywhere; font: 15px/1.65 var(--ui); }
+.md-row .md-cell + .md-cell { border-left: 1px solid var(--line); }
+.md-cell > * { margin-block: 0; }
+.md-cell > .vdd-added, .md-cell > .vdd-removed, .md-cell > .vdd-modified { background: none; }
+.md-cell h1, .md-cell h2, .md-cell h3, .md-cell h4, .md-cell h5, .md-cell h6 { font-weight: 650; line-height: 1.3; letter-spacing: -0.01em; }
+.md-cell h1 { font-size: 1.7em; } .md-cell h2 { font-size: 1.4em; } .md-cell h3 { font-size: 1.15em; }
+.md-cell h4, .md-cell h5, .md-cell h6 { font-size: 1em; }
+.md-cell ul, .md-cell ol { padding-left: 1.5em; }
+.md-cell li + li { margin-top: 2px; }
+.md-cell blockquote { margin-inline: 0; padding: 2px 14px; border-left: 3px solid var(--line); color: var(--muted); }
+.md-cell a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.md-cell code { padding: 1px 5px; border-radius: 4px; background: var(--hover); font: 0.88em var(--mono); }
+.md-cell pre code { padding: 0; border-radius: 0; background: none; font: inherit; }
+.md-cell pre { padding: 10px 14px; overflow: auto; border-radius: 8px; background: var(--hover); font: 12.5px/1.6 var(--mono); }
+.md-cell table { border-collapse: collapse; font-size: 0.93em; }
+.md-cell th, .md-cell td { padding: 4px 10px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+.md-cell th { background: var(--hover); font-weight: 600; }
+.md-cell hr { border: 0; border-top: 1px solid var(--line); }
+.md-cell img { max-width: 100%; }
+.md-cell ins { text-decoration: none; background: color-mix(in srgb, var(--add) 24%, transparent); border-radius: 2px; }
+.md-cell ins.vdd-modified { background: color-mix(in srgb, var(--mod) 20%, transparent); }
+.md-cell del { text-decoration: none; background: color-mix(in srgb, var(--del) 24%, transparent); border-radius: 2px; }
+.md-grid.unified del { text-decoration: line-through; text-decoration-thickness: 1px; }
+.md-row.mod > .md-cell:first-child { box-shadow: inset 3px 0 0 var(--del); }
+.md-row.mod > .md-cell:last-child { box-shadow: inset 3px 0 0 var(--add); }
+.md-row.del > .md-cell:first-child, .md-cell.del { background: color-mix(in srgb, var(--del) 9%, transparent); box-shadow: inset 3px 0 0 var(--del); }
+.md-row.add > .md-cell:last-child, .md-cell.add { background: color-mix(in srgb, var(--add) 9%, transparent); box-shadow: inset 3px 0 0 var(--add); }
+.md-grid.unified .md-row.mod > .md-cell { box-shadow: inset 3px 0 0 var(--mod); }
+.md-cell.empty { background: repeating-linear-gradient(135deg, transparent 0 6px, var(--line) 6px 7px); opacity: .5; }
+.md-fold { display: block; width: calc(100% - 16px); margin: 4px 8px; padding: 5px 10px; border: 0; border-radius: 6px; background: var(--hover);
+  color: var(--muted); font: 12.5px var(--ui); text-align: left; cursor: pointer; }
+.md-fold:hover { color: var(--fg); background: var(--press); }
+@media (max-width: 640px) { .md-row { grid-template-columns: minmax(0, 1fr); } .md-row .md-cell + .md-cell { border-left: 0; } .md-cell.empty { display: none; } }
 """
 
 JS = """
@@ -280,13 +334,14 @@ const config = JSON.parse(document.getElementById('diff-config').textContent);
 const root = document.documentElement;
 
 const PREFS_KEY = 'diff-view:prefs';
-const prefs = { style: 'split', wrap: true, all: config.full };
+const prefs = { style: 'split', wrap: true, all: config.full, md: 'rendered' };
 try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREFS_KEY) || '{}')); } catch (e) {}
 if (config.full) prefs.all = true;
-function savePrefs() { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ style: prefs.style, wrap: prefs.wrap })); } catch (e) {} }
+function savePrefs() { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ style: prefs.style, wrap: prefs.wrap, md: prefs.md })); } catch (e) {} }
 
 const CHEVRON = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const views = [];
+let FileDiff, parseDiffFromFile;
 
 function optionsFor(v) {
   return {
@@ -309,7 +364,144 @@ function optionsFor(v) {
     },
   };
 }
-function apply(v) { v.diff.setOptions(optionsFor(v)); v.diff.rerender(); }
+// ---- Markdown, drawn instead of shown as source ----
+const mdState = { libs: null, loading: null, failed: false };
+function ensureMd() {
+  if (!mdState.loading) {
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timed out after 20 s')), 20000));
+    mdState.loading = Promise.race([Promise.all([import(config.markdown), import(config.domDiff)]), timeout]).then(([m, d]) => {
+      // Raw HTML in a document is shown as text, and comments are hidden, as on GitHub.
+      const md = new m.default({ html: true, linkify: false });
+      const raw = (tokens, i) => /^\\s*<!--/.test(tokens[i].content) ? '' : md.utils.escapeHtml(tokens[i].content);
+      md.renderer.rules.html_block = raw;
+      md.renderer.rules.html_inline = raw;
+      mdState.libs = { md, visualDomDiff: d.visualDomDiff };
+    }).catch(e => {
+      mdState.failed = true;
+      document.getElementById('md-fail').textContent = 'Markdown could not be drawn (' + (e && e.message || e) + '), so these files show as source.';
+    });
+  }
+  return mdState.loading;
+}
+function mdOn(v) { return v.md && prefs.md === 'rendered' && !!mdState.libs; }
+
+function bodyOf(src) {
+  // A leading front-matter block is shown as code, as in the source.
+  const text = (src || '').replace(/\\r\\n/g, '\\n').replace(/^---\\n([\\s\\S]*?)\\n---(?=\\n|$)/, (m, y) => '```yaml\\n' + y + '\\n```');
+  const e = document.createElement('div');
+  e.innerHTML = mdState.libs.md.render(text);
+  return e;
+}
+function mdRows(v) {
+  if (v.rows) return v.rows;
+  const f = files[v.i];
+  const merged = mdState.libs.visualDomDiff(bodyOf(f.old), bodyOf(f.new)).firstElementChild;
+  const mark = '.vdd-added, .vdd-removed, .vdd-modified';
+  v.rows = [];
+  for (const k of merged.children) {
+    if (!k.textContent.trim() && !k.matches('hr, img') && !k.querySelector('img, hr')) continue;  // empty wrappers
+    const added = k.classList.contains('vdd-added'), removed = k.classList.contains('vdd-removed');
+    let left = null, right = null;
+    if (!added) { left = k.cloneNode(true); left.querySelectorAll('.vdd-added').forEach(n => n.remove()); }
+    if (!removed) { right = k.cloneNode(true); right.querySelectorAll('.vdd-removed').forEach(n => n.remove()); }
+    const changed = added || removed || k.matches(mark) || !!k.querySelector(mark);
+    v.rows.push({ merged: k, left, right, kind: added ? 'add' : removed ? 'del' : changed ? 'mod' : 'same', changed });
+  }
+  return v.rows;
+}
+function cell(node, cls) {
+  const c = document.createElement('div');
+  c.className = 'md-cell ' + cls;
+  if (node) { c.append(node.cloneNode(true)); c.querySelectorAll('a[href]').forEach(a => { a.title = a.getAttribute('href'); }); }
+  return c;
+}
+function mdRow(r, split) {
+  const row = document.createElement('div');
+  row.className = 'md-row ' + r.kind;
+  if (split) row.append(cell(r.left, r.left ? '' : 'empty'), cell(r.right, r.right ? '' : 'empty'));
+  else row.append(cell(r.merged, r.kind === 'add' || r.kind === 'del' ? r.kind : ''));
+  return row;
+}
+function mdBody(v) {
+  const rows = mdRows(v), split = prefs.style === 'split';
+  const grid = document.createElement('div');
+  grid.className = 'md-grid ' + (split ? 'split' : 'unified');
+  if (!rows.some(r => r.changed)) {
+    const n = document.createElement('p');
+    n.className = 'md-note';
+    n.textContent = 'Nothing changed in the drawn text: only comments, spacing or markup. Choose Source to see every line.';
+    grid.append(n);
+    return grid;
+  }
+  const keep = 1;  // unchanged blocks kept around a change
+  for (let i = 0; i < rows.length;) {
+    if (rows[i].changed) { grid.append(mdRow(rows[i++], split)); continue; }
+    let j = i;
+    while (j < rows.length && !rows[j].changed) j++;
+    const head = i === 0 ? 0 : keep, tail = j === rows.length ? 0 : keep, hidden = j - i - head - tail;
+    if (prefs.all || hidden < 3) { for (let k = i; k < j; k++) grid.append(mdRow(rows[k], split)); }
+    else {
+      for (let k = i; k < i + head; k++) grid.append(mdRow(rows[k], split));
+      const bar = document.createElement('button');
+      bar.type = 'button'; bar.className = 'md-fold'; bar.textContent = hidden + ' unchanged blocks';
+      const folded = rows.slice(i + head, j - tail);
+      bar.addEventListener('click', () => bar.replaceWith(...folded.map(r => mdRow(r, split))));
+      grid.append(bar);
+      for (let k = j - tail; k < j; k++) grid.append(mdRow(rows[k], split));
+    }
+    i = j;
+  }
+  return grid;
+}
+function mdHeader(v) {
+  const h = document.createElement('div');
+  h.className = 'md-head';
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'fold'; b.innerHTML = CHEVRON;
+  b.setAttribute('aria-expanded', String(!v.collapsed));
+  b.title = v.collapsed ? 'Expand file' : 'Collapse file';
+  b.addEventListener('click', () => setCollapsed(v, !v.collapsed));
+  const sym = { added: 'M5 8h6M8 5v6', deleted: 'M5 8h6', modified: '' }[v.status];
+  const ico = document.createElement('span');
+  ico.className = 'ico ' + v.status;
+  ico.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.5"/>'
+    + (sym ? '<path d="' + sym + '" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>' : '<circle cx="8" cy="8" r="2" fill="currentColor"/>') + '</svg>';
+  const name = document.createElement('span');
+  name.className = 'name'; name.textContent = files[v.i].name;
+  h.append(b, ico, name);
+  if (v.status === 'added' || v.status === 'deleted') {
+    const t = document.createElement('span');
+    t.className = 'tag ' + v.status; t.textContent = v.status === 'added' ? 'new' : 'deleted';
+    h.append(t);
+  }
+  const grow = document.createElement('span');
+  grow.className = 'grow';
+  const del = document.createElement('span'), add = document.createElement('span');
+  del.className = 'cnt del'; del.textContent = '\\u2212' + v.removed;
+  add.className = 'cnt add'; add.textContent = '+' + v.added;
+  h.append(grow);
+  if (v.removed) h.append(del);
+  if (v.added) h.append(add);
+  return h;
+}
+function renderMd(v) {
+  v.section.replaceChildren(mdHeader(v));
+  if (!v.collapsed) v.section.append(mdBody(v));
+}
+
+// Build a file's view from nothing, in the mode the page is in now.
+function mount(v) {
+  if (v.diff) { try { v.diff.cleanUp(); } catch (e) {} v.diff = null; }
+  v.section.replaceChildren();
+  if (mdOn(v)) { v.mounted = 'md'; renderMd(v); return; }
+  v.mounted = 'code';
+  v.diff = new FileDiff(optionsFor(v));
+  v.diff.render({ fileDiff: v.fileDiff, containerWrapper: v.section });
+}
+function apply(v) {
+  if (v.mounted === 'md') renderMd(v);
+  else { v.diff.setOptions(optionsFor(v)); v.diff.rerender(); }
+}
 function setCollapsed(v, collapsed) { v.collapsed = collapsed; apply(v); }
 function applyAll() { views.forEach(apply); }
 
@@ -328,15 +520,26 @@ function setCounts(i, removed, added) {
 
 function syncToolbar() {
   document.querySelectorAll('[data-style]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.style === prefs.style)));
+  document.querySelectorAll('[data-md]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.md === prefs.md)));
   document.getElementById('opt-wrap').checked = prefs.wrap;
   document.getElementById('opt-all').checked = prefs.all;
 }
 document.addEventListener('click', e => {
   const s = e.target.closest('[data-style]');
   if (s) { prefs.style = s.dataset.style; savePrefs(); syncToolbar(); applyAll(); return; }
+  const m = e.target.closest('[data-md]');
+  if (m) { switchMd(m.dataset.md); return; }
   const f = e.target.closest('[data-files]');
   if (f) views.forEach(v => setCollapsed(v, f.dataset.files === 'collapse'));
+  // Links in a drawn document would resolve against this page, so only web links open, in a new tab.
+  const a = e.target.closest('.md-cell a[href]');
+  if (a) { e.preventDefault(); if (/^https?:/i.test(a.getAttribute('href'))) window.open(a.href, '_blank', 'noopener'); }
 });
+async function switchMd(mode) {
+  prefs.md = mode; savePrefs(); syncToolbar();
+  if (mode === 'rendered') await ensureMd();
+  views.filter(v => v.md).forEach(mount);
+}
 document.getElementById('opt-wrap').addEventListener('change', e => { prefs.wrap = e.target.checked; savePrefs(); applyAll(); });
 document.getElementById('opt-all').addEventListener('change', e => { prefs.all = e.target.checked; applyAll(); });
 syncToolbar();
@@ -349,7 +552,8 @@ function goOffline(reason) {
 
 try {
   const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timed out after 20 s')), 20000));
-  const { FileDiff, parseDiffFromFile } = await Promise.race([import(config.renderer), timeout]);
+  ({ FileDiff, parseDiffFromFile } = await Promise.race([import(config.renderer), timeout]));
+  if (prefs.md === 'rendered' && files.some(f => f.md)) await ensureMd();
   let removedAll = 0, addedAll = 0;
   files.forEach((f, i) => {
     if (f.binary) return;
@@ -361,10 +565,9 @@ try {
     for (const h of fileDiff.hunks) { removed += h.deletionLines; added += h.additionLines; }
     removedAll += removed; addedAll += added;
     setCounts(i, removed, added);
-    const v = { status: f.old == null ? 'added' : f.new == null ? 'deleted' : 'modified', collapsed: false };
-    v.diff = new FileDiff(optionsFor(v));
-    section.replaceChildren();
-    v.diff.render({ fileDiff, containerWrapper: section });
+    const v = { i, section, fileDiff, removed, added, md: !!f.md, collapsed: false,
+      status: f.old == null ? 'added' : f.new == null ? 'deleted' : 'modified' };
+    mount(v);
     views.push(v);
   });
   const total = document.getElementById('total');
@@ -388,7 +591,14 @@ def build_page(title, subtitle, files, context, full):
     sub = f'<p class="sub">{html.escape(subtitle)}</p>' if subtitle else ""
     count = f"{len(files)} file{'s' if len(files) != 1 else ''}"
     data = json.dumps(files, ensure_ascii=False).replace("<", "\\u003c")
-    config = json.dumps({"renderer": RENDERER, "context": context, "full": full})
+    config = json.dumps({"renderer": RENDERER, "markdown": MARKDOWN, "domDiff": DOM_DIFF, "context": context, "full": full})
+    md_control = ""
+    if any(f["md"] for f in files):
+        md_control = ('<span class="lbl">Markdown</span>'
+                      '<div class="seg" role="group" aria-label="Markdown files">'
+                      '<button type="button" data-md="rendered">Rendered</button>'
+                      '<button type="button" data-md="source">Source</button></div>'
+                      '<span class="note" id="md-fail"></span>')
     if not files:
         body = '<p class="empty-page">No changes.</p>'
     else:
@@ -396,6 +606,7 @@ def build_page(title, subtitle, files, context, full):
 <div class="toolbar">
   <div class="group">
     <div class="seg" role="group" aria-label="Layout"><button type="button" data-style="split">Split</button><button type="button" data-style="unified">Unified</button></div>
+    {md_control}
     <label class="toggle"><input type="checkbox" id="opt-wrap"> Wrap lines</label>
     <label class="toggle"><input type="checkbox" id="opt-all"> Show all lines</label>
   </div>

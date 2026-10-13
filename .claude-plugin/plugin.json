@@ -2,7 +2,7 @@
   "name": "diff-view",
   "displayName": "diff-view",
   "description": "Render file changes as a side-by-side diff page and open it in the browser, so you review an agent's edits whole: split or unified, wrapped lines, changed words marked.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "Jin Huang",
     "url": "https://github.com/jinhuang712"

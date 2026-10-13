@@ -9,10 +9,18 @@ diff-view is a Claude Code skill. After the agent edits files you will review, i
   <img alt="A diff-view page: a file list with line counts, then each file's changes side by side" src="docs/screenshot-light.png">
 </picture>
 
+Markdown files are drawn as documents, aligned block by block:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-markdown-dark.png">
+  <img alt="A Markdown diff drawn as documents: headings, a table and a list side by side, with changed words marked" src="docs/screenshot-markdown-light.png">
+</picture>
+
 ## What the page shows
 
 - **A file list** with each file's status, the lines removed and added, and a change bar.
 - **Each file side by side**: the old text on the left and the new text on the right, or both in one column.
+- **Markdown drawn as documents**: headings, lists and tables side by side, aligned block by block, with the changed words marked. A switch shows the same files as line diffs.
 - **Changed words marked** inside each changed line, with the code syntax-highlighted.
 - **Wrapped long lines**, so prose docs read without sideways scrolling.
 - **Folded context**: unchanged stretches fold to a bar that expands on click.
@@ -52,10 +60,11 @@ The script needs Python 3 and nothing else.
 
 ## Known limits
 
-- The page loads its renderer, [@pierre/diffs](https://diffs.com), from esm.sh when you open it, so it needs a network connection. Without one, it shows a plain unified diff.
+- The page loads its renderers from esm.sh when you open it, so it needs a network connection. Without one, it shows a plain unified diff.
+- A drawn Markdown document is compared block by block. A change inside a long list or table shows as one tall row, and images with relative paths do not load.
 - Binary files are listed but not shown.
 - It has been tested in Chrome only.
 
 ## License
 
-[MIT](LICENSE). The renderer that the page loads, @pierre/diffs, is Apache-2.0.
+[MIT](LICENSE). The page loads [@pierre/diffs](https://diffs.com) (Apache-2.0), [markdown-it](https://github.com/markdown-it/markdown-it) (MIT) and [visual-dom-diff](https://github.com/Teamwork/visual-dom-diff) (MIT).

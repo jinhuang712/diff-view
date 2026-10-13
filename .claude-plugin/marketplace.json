@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "diff-view: review an agent's edits side by side in the browser",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "plugins": [
     {

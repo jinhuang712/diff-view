@@ -7,7 +7,9 @@ description: Render file changes as a side-by-side diff page and open it in the 
 
 Turns a set of file changes into one HTML page: a list of the changed files with their line counts, then each file's diff with the old text on the left and the new text on the right. Lines that leave are red, lines that arrive are green, the words that changed inside a line are marked, and the code is syntax-highlighted. Unchanged stretches fold to a bar that expands on click. The reader can switch between split and unified layouts, turn line wrapping off, show every line, and collapse files. File headers stay pinned while scrolling. The page follows the system's light or dark theme.
 
-The page draws the diffs with [@pierre/diffs](https://diffs.com) (Apache-2.0), loaded from esm.sh at a pinned version, so it needs a network connection when opened. Without one, it shows a plain unified diff of the same changes.
+Markdown files (`.md`, `.markdown`) are drawn as documents by default: headings, lists, tables and code blocks, with the old version on the left and the new on the right, aligned block by block. Changed words are marked inside each block, and long unchanged runs of blocks fold. A Source switch in the toolbar shows the same files as line diffs instead, which is the view to use when a change is in spacing, a comment or markup. Raw HTML in a document shows as text, comments are hidden, and links do not navigate.
+
+The page draws the diffs with [@pierre/diffs](https://diffs.com) (Apache-2.0), and Markdown with [markdown-it](https://github.com/markdown-it/markdown-it) (MIT) and [visual-dom-diff](https://github.com/Teamwork/visual-dom-diff) (MIT). All load from esm.sh at pinned versions, so the page needs a network connection when opened. Without one, it shows a plain unified diff of the same changes.
 
 Use it so the user reviews changes the way they read them best: whole, side by side, in a browser, instead of a diff in the terminal.
 
@@ -40,6 +42,8 @@ Options:
 | `--open` | Open the page in the default browser |
 
 `--git` includes untracked files, so new files show as added. Binary files are listed but not shown.
+
+When the changes are mostly prose (docs, specs, skills), leave Markdown on Rendered and tell the user they can switch to Source for line numbers. When a change touches code, the line diff is the better view, and non-Markdown files always use it.
 
 ## What to tell the user
 
