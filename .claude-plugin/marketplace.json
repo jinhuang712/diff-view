@@ -1,0 +1,19 @@
+{
+  "name": "diff-view",
+  "owner": {
+    "name": "Jin Huang"
+  },
+  "metadata": {
+    "description": "diff-view: review an agent's edits side by side in the browser",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "diff-view",
+      "source": "./",
+      "description": "Render file changes as a side-by-side diff page and open it in the browser",
+      "category": "development",
+      "tags": ["diff", "review"]
+    }
+  ]
+}
